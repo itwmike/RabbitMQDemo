@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-
+using RabbitMQ.Client.Events;
 using RabbitMQ.Client;
 
 namespace RabbitMQDemo.Customer
@@ -24,29 +24,55 @@ namespace RabbitMQDemo.Customer
             var queueName = "DirectQueue1";
             var routingKey = "DirectQueue1";
             var durable = true;//约定使用持久化
-            var queueArgs = new Dictionary<string,object>();
+            var noack = false;//消息手动确认,否则消费者在接收到消息后会自动应答
 
             IConnection conn = factory.CreateConnection();
             IModel model = conn.CreateModel();
-
-            model.ExchangeDeclare(exchangeName, ExchangeType.Direct, durable);
-
-            //queueArgs.Add("x-max-priority", 10);//设置队列的最大优先级，
-
-            model.QueueDeclare(queueName, durable, false, false, queueArgs);
+            //我们在消费端 从新进行一次 队列和交换机的绑定 ，防止 因为消费端在生产端 之前运行的 问题。
+            model.ExchangeDeclare(exchangeName, ExchangeType.Fanout, durable);
+            model.QueueDeclare(queueName, durable, false, false, null);
             model.QueueBind(queueName, exchangeName, routingKey, null);
 
-            var properties=model.CreateBasicProperties();
-            properties.Persistent = true;//设置消息的持久化
-            //properties.Priority = 9;//可以设置消息的优先级
+            #region 这种方式只能一次性获取队列中的所有消息，并不能做到 时时，所以不采取！
+            //while (true)
+            //{
+            //    var result = model.BasicGet(queueName, noack);//从队列总获取消息
+            //    if (result != null)
+            //    {
+            //        var content = System.Text.Encoding.UTF8.GetString(result.Body);
+            //        Console.WriteLine("获取到消息：{0}", content);
+            //        model.BasicAck(result.DeliveryTag, false);
+            //    }
+            //    else
+            //    {
+            //        break;
+            //    }
+            //}
+            #endregion
 
-            for (int i = 1; i < 20; i++)
+            #region 通过事件的形式，如果队列中有消息，则执行事件。建议采用这种方式。
+            model.BasicQos(0, 1, false);//设置一个消费者在同一时间只处理一个消息，这个rabbitmq 就会将消息公平分发
+            var consumer = new EventingBasicConsumer(model);
+            consumer.Received += (ch, ea) =>
             {
-                byte[] messageBodyBytes = System.Text.Encoding.UTF8.GetBytes("Hello limitcode :"+i);
-                model.BasicPublish(exchangeName, routingKey, properties, messageBodyBytes);//推送消息
-                Console.WriteLine("已发送 {0} 条消息",i);
-                System.Threading.Thread.Sleep(3000);
-            }
+                var content = System.Text.Encoding.UTF8.GetString(ea.Body);
+                Console.WriteLine("获取到消息：{0}", content);
+                model.BasicAck(ea.DeliveryTag, false);
+            };
+            model.BasicConsume(queueName, noack, consumer);
+            #endregion
+
+            #region 此方法同样会阻塞进程，所以不建议使用。
+            //QueueingBasicConsumer consumer = new QueueingBasicConsumer(model);//定义这个队列的消费者
+            //model.BasicQos(0, 1, false);//设置一个消费者在同一时间只处理一个消息，这个rabbitmq 就会将消息公平分发
+            //while (true)
+            //{
+            //    BasicDeliverEventArgs ea = (BasicDeliverEventArgs)consumer.Queue.Dequeue();
+            //    var content = Encoding.UTF8.GetString(ea.Body);
+            //    Console.WriteLine("获取到消息：{0}", content);
+            //    model.BasicAck(ea.DeliveryTag, false);//如果是自动应答，不用写这句代码
+            //}
+            #endregion
 
         }
     }

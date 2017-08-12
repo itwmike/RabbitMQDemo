@@ -1,6 +1,5 @@
 F:\Works\RabbitMQDemo\RabbitMQDemo.Customer\bin\Debug\RabbitMQDemo.Customer.exe
 F:\Works\RabbitMQDemo\RabbitMQDemo.Customer\bin\Debug\RabbitMQDemo.Customer.pdb
-F:\Works\RabbitMQDemo\RabbitMQDemo.Customer\obj\Debug\RabbitMQDemo.Customer.csprojResolveAssemblyReference.cache
 F:\Works\RabbitMQDemo\RabbitMQDemo.Customer\obj\Debug\RabbitMQDemo.Customer.exe
 F:\Works\RabbitMQDemo\RabbitMQDemo.Customer\obj\Debug\RabbitMQDemo.Customer.pdb
 F:\Works\RabbitMQDemo\RabbitMQDemo.Customer\bin\Debug\RabbitMQ.Client.dll
